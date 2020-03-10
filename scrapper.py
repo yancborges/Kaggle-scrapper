@@ -15,7 +15,29 @@ def get_shell_response(data):
 
     response = data.decode('utf8').replace('\r', '')
     response = [resp.split(',') for resp in response.split('\n')]
+    response = [fix_numeric_values(resp) for resp in response]
     return response
+
+
+def fix_numeric_values(_list):
+
+    for value in _list:
+        index = _list.index(value)
+        if isinstance(value, str):
+            if value.isdigit():
+                _list[index] = float(value)
+            elif value == 'None':
+                _list[index] = 0
+            else:
+                try:
+                    _list[index] = float(value)
+                except:
+                    pass
+
+        elif value == None:
+            _list[index] == 0
+
+    return _list
 
 
 def save_log(error):
@@ -62,7 +84,7 @@ def run_bat():
             response = run_shell(cmd)
             response = pd.DataFrame(data=response[1:-1], columns=response[0])
             if response.shape[0] > 0:
-                response.sort_values(by=['publicScore'])
+                response.sort_values(by=['publicScore'], inplace=True)
             return json.loads(response.to_json(orient='table'))['data']
         
         def get_position():
@@ -76,8 +98,9 @@ def run_bat():
 
         doc['submissions'] = get_submissions()
         doc['submissionCount'] = len(doc['submissions'])
+        doc['friendlyRef'] = doc['ref'].replace('-', ' ').title()
         if doc['submissionCount'] > 0:
-            doc['higherScore'] = float(doc['submissions'][0]['publicScore'])
+            doc['higherScore'] = float(doc['submissions'][-1]['publicScore'])
         else:
             doc['higherScore'] = None
 
@@ -89,8 +112,8 @@ def run_bat():
 
 def update_db(doc_list, db):
 
-    x = 0
-    #db.competitions.update({''})
+    db.competitions.delete_many({})
+    db.competitions.insert_many(doc_list)
 
 
 def connect():
